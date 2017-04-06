@@ -4,22 +4,22 @@ import itertools
 import numpy as np
 import tensorflow as tf
 from reader import TextReader
-import random 
-import time 
+import random
+import time
 
 embed_dim = 256
 h_dim = 256
 k = 100
 
-data_path = '/home/yanjianfeng/VAE/n_gram/'
-model_dir = '/home/yanjianfeng/VAE/n_gram/model_dir/'
+data_path = './'
+model_dir = './model_dir/'
 reader = TextReader(data_path)
 
 def create_train_op(loss, var_list):
-    train_op = tf.contrib.layers.optimize_loss(loss = loss, 
-        global_step = tf.contrib.framework.get_global_step(), 
-        learning_rate = 0.01, 
-        clip_gradients = 10.0, 
+    train_op = tf.contrib.layers.optimize_loss(loss = loss,
+        global_step = tf.contrib.framework.get_global_step(),
+        learning_rate = 0.01,
+        clip_gradients = 10.0,
         optimizer = "Adam",
         variables = var_list)
     return train_op
@@ -63,15 +63,15 @@ with tf.variable_scope('clustering') as vs_cluster:
     c_loss = tf.reduce_mean(clust_loss)
 
 with tf.variable_scope('decoder') as vs:
-    
+
     R = tf.get_variable('R', [h_dim, reader.vocab_size], initializer = tf.truncated_normal_initializer(0, 0.01))
     b = tf.get_variable('b', [reader.vocab_size], initializer = tf.truncated_normal_initializer(0, 0.01))
-  
-    e = tf.matmul(mu, R) + b 
+
+    e = tf.matmul(mu, R) + b
     p_x_i = tf.nn.softmax(e, -1)
     g_loss = -tf.reduce_sum(tf.log(p_x_i + 1e-10)*x, 1)
-    g_loss_stand = tf.reduce_sum(p_x_i*x, 1)
-    loss_2 = tf.reduce_mean(g_loss_stand)
+    g_loss_stand = -tf.log(1.0/tf.reduce_sum(x, 1))*tf.reduce_sum(x, 1)
+    loss_2 = tf.reduce_mean(g_loss/g_loss_stand)
     loss = tf.reduce_mean(g_loss)
 
 c_var_list = []
@@ -83,7 +83,6 @@ for var in tf.trainable_variables():
         d_var_list.append(var)
 
 for i in d_var_list:print i.name
-time.sleep(3)
 
 #optim_g = tf.train.AdamOptimizer(learning_rate=0.01).minimize(c_loss, global_step=global_step, var_list=c_var_list)
 #optim_all = tf.train.AdamOptimizer(learning_rate=0.01).minimize(loss, global_step=global_step, var_list=d_var_list)
@@ -98,12 +97,12 @@ with tf.Session() as sess:
     ckpt = tf.train.get_checkpoint_state(model_dir)
     if ckpt and ckpt.model_checkpoint_path:
         print 'the model being restored is '
-        print ckpt.model_checkpoint_path 
+        print ckpt.model_checkpoint_path
         saver.restore(sess, ckpt.model_checkpoint_path)
         print 'sucesssfully restored the session'
 
     count = global_step.eval()
-    for k in range(0, 0):
+    for k in range(0, 100000):
     	data, length = reader.iterator()
         lm, gm, _= sess.run([loss, loss_2, optim_all], feed_dict = {tx: data, batch_size:length})
         print 'After\t' + str(global_step.eval()) + ' th step,the loss\t' + str(gm) + '\t the loss is\t' + str(lm)
@@ -127,12 +126,12 @@ with tf.Session() as sess:
     ckpt = tf.train.get_checkpoint_state(model_dir)
     if ckpt and ckpt.model_checkpoint_path:
         print 'the model being restored is '
-        print ckpt.model_checkpoint_path 
+        print ckpt.model_checkpoint_path
         saver.restore(sess, ckpt.model_checkpoint_path)
         print 'sucesssfully restored the session'
     AMU = []
-    text = reader.train_data[:1000]
-    data, length = [np.bincount(t, minlength = reader.vocab_size) for t in text] , 10000
+    text = reader.train_data
+    data, length = [np.bincount(t, minlength = reader.vocab_size) for t in text] , len(text)
     AMU, topics, simi = sess.run([mu, index_re, cosine_simi] ,feed_dict = {tx: data, batch_size:length})
 
 def nearest(i):

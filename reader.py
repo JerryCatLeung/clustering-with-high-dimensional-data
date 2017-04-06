@@ -9,7 +9,7 @@ from collections import Counter
 
 class TextReader(object):
   def __init__(self, data_path):
-    train_path = os.path.join(data_path, "train_sample.txt")
+    train_path = os.path.join(data_path, "train.txt")
     vocab_path = os.path.join(data_path, "vocab")
 
     if os.path.exists(vocab_path):
@@ -22,8 +22,8 @@ class TextReader(object):
 
     self.idx2word = {v:k for k, v in self.vocab.items()}
     self.vocab_size = len(self.vocab)
-    self.i = 0 
-    
+    self.i = 0
+
 
 
   def _build_vocab(self, file_path, vocab_path):
@@ -31,7 +31,7 @@ class TextReader(object):
     counter = Counter([i for line in d for i in line.split(' ')])
 
     count_pairs = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
-    count_pairs = [i for i in count_pairs if i[1] >=3]
+    count_pairs = [i for i in count_pairs if i[1] >=1]
     words, _ = list(zip(*count_pairs))
     self.vocab = dict(zip(words, range(len(words))))
     print 'the coabsize is\t' + str(len(self.vocab))
@@ -45,7 +45,7 @@ class TextReader(object):
     self.texts = []
     for text in texts:
       trans = [i for i in np.array(map(self.vocab.get, text.split())) if i!=None]
-      if trans != []:
+      if len(trans) >= 4:
         data.append(list(set(trans)))
         self.texts.append(text)
     return data
@@ -54,15 +54,15 @@ class TextReader(object):
     return np.bincount(data, minlength = self.vocab_size)
 
 
-  def iterator(self, data_type="train"): 
-    
+  def iterator(self, data_type="train"):
+
     if self.i + 1000 >= len(self.train_data):
       self.i  = len(self.train_data)%1000
       x = self.train_data[self.i: self.i+1000]
     else:
       x = self.train_data[self.i: self.i+1000]
-      self.i += 1000 
-    
+      self.i += 1000
+
     x = [self.onehot(i) for i in x]
     return x, len(x)
 
